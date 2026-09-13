@@ -38,16 +38,42 @@ static int cmd_q(char *args) {
 
 static int cmd_help(char *args);
 
+static int cmd_si(char *args) {
+	int steps;
+	if(args == NULL) {
+		steps = 1;
+	}
+	else {
+		steps = atoi(args);
+	}
+	cpu_exec(steps);
+	return 0;
+}
+
+static int cmd_info(char *args){
+	if (strcmp(args, "r") == 0) {
+		int i;
+
+		for (i = R_EAX; i <= R_EDI; i++) {
+			printf("%s: 0x%08x\n", regsl[i], reg_l(i));
+		}
+
+		printf("eip: 0x%08x\n", cpu.eip);
+	}
+}
+
 static struct {
 	char *name;
 	char *description;
-	int (*handler) (char *);
+	int (*handler) (char *);//函数指针，handler存放下面的名字
 } cmd_table [] = {
 	{ "help", "Display informations about all supported commands", cmd_help },
 	{ "c", "Continue the execution of the program", cmd_c },
 	{ "q", "Exit NEMU", cmd_q },
 
-	/* TODO: Add more commands */
+	/* TODO: Add more commands*/
+	{"si","single step",cmd_si},
+	{"info","print",cmd_info},
 
 };
 
@@ -82,7 +108,7 @@ void ui_mainloop() {
 		char *str_end = str + strlen(str);
 
 		/* extract the first token as the command */
-		char *cmd = strtok(str, " ");
+		char *cmd = strtok(str, " ");    //在这里识别命令，cmd指向前面的
 		if(cmd == NULL) { continue; }
 
 		/* treat the remaining string as the arguments,
