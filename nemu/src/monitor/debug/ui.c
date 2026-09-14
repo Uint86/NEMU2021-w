@@ -52,14 +52,17 @@ static int cmd_si(char *args) {
 
 static int cmd_info(char *args){
 	if (strcmp(args, "r") == 0) {
-		int i;
+        int i;
 
-		for (i = R_EAX; i <= R_EDI; i++) {
-			printf("%s: 0x%08x\n", regsl[i], reg_l(i));
-		}
+        for (i = R_EAX; i <= R_EDI; i++) {
+            printf("%-6s 0x%08x\n", regsl[i], reg_l(i));
+        }
 
-		printf("eip: 0x%08x\n", cpu.eip);
-	}
+        printf("%-6s 0x%08x\n", "eip", cpu.eip);
+        printf("%-6s 0x%08x\n", "eflags", cpu.eflags.val);
+    }
+
+	return 0;
 }
 
 static struct {
