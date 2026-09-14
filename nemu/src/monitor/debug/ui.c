@@ -92,7 +92,14 @@ static int cmd_x(char *args) {
 	n = atoi(n_str);
 	addr = strtoul(addr_str, NULL, 0);
 
-	printf("n = %d, addr = 0x%08x\n", n, addr);
+	int i;
+
+	for (i = 0; i < n; i++) {
+		swaddr_t current_addr = addr + i * 4;
+		uint32_t data = swaddr_read(current_addr, 4);
+
+		printf("0x%08x: 0x%08x\n", current_addr, data);
+	}
 
 	return 0;
 }
