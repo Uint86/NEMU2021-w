@@ -54,6 +54,11 @@ static int cmd_info(char *args){
 	if (strcmp(args, "r") == 0) {
         int i;
 
+		if (args == NULL) {
+			printf("Usage: info r\n");
+			return 0;
+		}
+
         for (i = R_EAX; i <= R_EDI; i++) {
             printf("%-6s 0x%08x\n", regsl[i], reg_l(i));
         }
@@ -61,6 +66,33 @@ static int cmd_info(char *args){
         printf("%-6s 0x%08x\n", "eip", cpu.eip);
         printf("%-6s 0x%08x\n", "eflags", cpu.eflags.val);
     }
+
+	return 0;
+}
+
+static int cmd_x(char *args) {
+	char *n_str;
+	char *addr_str;
+	int n;
+	swaddr_t addr;
+
+	if (args == NULL) {
+		printf("Usage: x N ADDR\n");
+		return 0;
+	}
+
+	n_str = strtok(args, " ");
+	addr_str = strtok(NULL, " ");
+
+	if (n_str == NULL || addr_str == NULL) {
+		printf("Usage: x N ADDR\n");
+		return 0;
+	}
+
+	n = atoi(n_str);
+	addr = strtoul(addr_str, NULL, 0);
+
+	printf("n = %d, addr = 0x%08x\n", n, addr);
 
 	return 0;
 }
@@ -77,6 +109,7 @@ static struct {
 	/* TODO: Add more commands*/
 	{"si","single step",cmd_si},
 	{"info","print",cmd_info},
+	{"x","examine",cmd_x},
 
 };
 
