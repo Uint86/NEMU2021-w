@@ -84,3 +84,15 @@ make_helper(jg_si_b) {
 
 	return len + 1;
 }
+
+make_helper(jbe_si_l) {
+	int len = decode_si_l(eip + 1);
+
+	if (cpu.eflags.CF || cpu.eflags.ZF) {
+		cpu.eip += op_src->simm;
+	}
+
+	print_asm("jbe %x", eip + len + 1 + op_src->simm);
+
+	return len + 1;
+}

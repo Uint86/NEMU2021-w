@@ -8,5 +8,6 @@ make_helper(jne_si_b);
 make_helper(jge_si_b);
 make_helper(jl_si_b);
 make_helper(jg_si_b);
+make_helper(jbe_si_l);
 
 #endif
