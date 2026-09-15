@@ -54,11 +54,17 @@ static int cmd_info(char *args){
 	int i;
 	WP *wp;
 
+	if (args == NULL) {
+		printf("Usage: info r|w\n");
+		return 0;
+	}
+
 	if (strcmp(args, "r") == 0) {
-		if (args == NULL) {
-			printf("Usage: info r\n");
-			return 0;
-		}
+		//bug
+		// if (args == NULL) {
+		// 	printf("Usage: info r\n");
+		// 	return 0;
+		// }
 
         for (i = R_EAX; i <= R_EDI; i++) {
             printf("%-6s 0x%08x\n", regsl[i], reg_l(i));
@@ -86,6 +92,11 @@ static int cmd_info(char *args){
 
 			wp = wp->next;
 		}
+	}
+
+	//修复bug
+	else {
+		printf("Unknown info argument '%s'\n", args);
 	}
 
 	return 0;

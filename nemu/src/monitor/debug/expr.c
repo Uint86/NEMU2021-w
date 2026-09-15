@@ -16,7 +16,9 @@ enum {
 	OR,
 	TK_NUM,
 	TK_HEX,
-	TK_REG
+	TK_REG,
+	TK_NEG, //一元负号
+	TK_DEREF//解引用
 };
 
 static struct rule {
@@ -108,7 +110,8 @@ static bool make_token(char *e) {
 						Assert(nr_token < 32, "too many tokens");
 						Assert(substr_len < 32, "number is too long");
 
-						tokens[nr_token].type = TK_NUM;
+						//tokens[nr_token].type = TK_NUM;  bug
+						tokens[nr_token].type = rules[i].token_type;
 						strncpy(tokens[nr_token].str,
 								substr_start, substr_len);
 						tokens[nr_token].str[substr_len] = '\0';
@@ -131,6 +134,28 @@ static bool make_token(char *e) {
 		if(i == NR_REGEX) {
 			printf("no match at position %d\n%s\n%*.s^\n", position, e, position, "");
 			return false;
+		}
+	}
+
+	//判断一元负号与解引用
+	for (i = 0; i < nr_token; i++) {
+		if (tokens[i].type == '-' &&
+				(i == 0 ||
+				(tokens[i - 1].type != TK_NUM &&
+				tokens[i - 1].type != TK_HEX &&
+				tokens[i - 1].type != TK_REG &&
+				tokens[i - 1].type != ')'))) {
+			tokens[i].type = TK_NEG;
+		}
+
+		/* 区分乘法和解引用 */
+		if (tokens[i].type == '*' &&
+				(i == 0 ||
+				(tokens[i - 1].type != TK_NUM &&
+				tokens[i - 1].type != TK_HEX &&
+				tokens[i - 1].type != TK_REG &&
+				tokens[i - 1].type != ')'))) {
+			tokens[i].type = TK_DEREF;
 		}
 	}
 
@@ -364,6 +389,19 @@ static uint32_t eval(int p, int q) {
 		}
 
 		return 0;
+	}
+
+	//一元负号
+	if (tokens[p].type == TK_NEG) {
+		return 0 - eval(p + 1, q);
+	}
+
+	//解引用
+	if (tokens[p].type == TK_DEREF) {
+		swaddr_t addr;
+
+		addr = eval(p + 1, q);
+		return swaddr_read(addr, 4);
 	}
 	
 	if (tokens[p].type == '!') {

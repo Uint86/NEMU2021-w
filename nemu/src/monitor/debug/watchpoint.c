@@ -72,3 +72,40 @@ void free_wp(WP *wp) {//释放监视点
 WP *get_wp_head(void) {
 	return head;
 }
+
+bool check_watchpoints(swaddr_t instr_eip) {//检查
+	WP *wp;
+	bool success;
+	bool triggered;
+	uint32_t new_value;
+
+	wp = head;
+	triggered = false;
+
+	while (wp != NULL) {
+		new_value = expr(wp->expression, &success);
+
+		if (!success) {
+			printf("Failed to evaluate watchpoint %d: %s\n",
+					wp->NO, wp->expression);
+			wp = wp->next;
+			continue;
+		}
+
+		if (new_value != wp->old_value) {
+			printf("Hint watchpoint %d at address 0x%08x\n",
+					wp->NO, instr_eip);
+
+			printf("Expression: %s\n", wp->expression);
+			printf("Old value:  0x%08x\n", wp->old_value);
+			printf("New value:  0x%08x\n", new_value);
+
+			wp->old_value = new_value;
+			triggered = true;
+		}
+
+		wp = wp->next;
+	}
+
+	return triggered;
+}

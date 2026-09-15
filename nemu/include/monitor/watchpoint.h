@@ -14,8 +14,15 @@ typedef struct watchpoint {
 
 } WP;
 
-#endif
-
 WP *new_wp(void);
 void free_wp(WP *wp);
 WP *get_wp_head(void);
+bool check_watchpoints(swaddr_t instr_eip);
+
+#endif
+
+// WP *new_wp(void);
+// void free_wp(WP *wp);
+// WP *get_wp_head(void);
+
+// bool check_watchpoints(swaddr_t instr_eip);
