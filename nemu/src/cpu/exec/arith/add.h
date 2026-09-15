@@ -15,4 +15,8 @@ make_helper(add_r2rm_v);
 
 make_helper(add_i2a_v);
 
+make_helper(add_i2rm_w);
+make_helper(add_i2rm_l);
+make_helper(add_i2rm_v);
+
 #endif
