@@ -136,16 +136,71 @@ static int get_priority(int type) {//定义优先级
 	}
 }
 
+static bool check_parentheses(int p, int q) {//判断整个表达式是否被括号包围
+	int i;
+	int depth;
+
+	if (tokens[p].type != '(' || tokens[q].type != ')') {
+		return false;
+	}
+
+	depth = 0;
+
+	for (i = p; i <= q; i++) {
+		if (tokens[i].type == '(') {
+			depth++;
+		} else if (tokens[i].type == ')') {
+			depth--;
+		}
+
+		/*
+		 * 最外层左括号在 q 之前已经闭合，
+		 * 说明它没有包住整个表达式。
+		 */
+		if (depth == 0 && i < q) {
+			return false;
+		}
+
+		if (depth < 0) {
+			return false;
+		}
+	}
+
+	return depth == 0;
+}
+
 static int find_main_operator(int p, int q) {
 	int i;
 	int op;
+	int depth;
 	int best_priority;
 	int current_priority;
 
 	op = -1;
+	depth = 0;
 	best_priority = 100;
 
 	for (i = p; i <= q; i++) {
+		if (tokens[i].type == '(') {
+			depth++;
+			continue;
+		}
+
+		if (tokens[i].type == ')') {
+			depth--;
+
+			if (depth < 0) {
+				panic("unmatched parentheses");
+			}
+
+			continue;
+		}
+
+		/* 括号内部的运算符不能作为当前层的主运算符。 */
+		if (depth != 0) {
+			continue;
+		}
+
 		current_priority = get_priority(tokens[i].type);
 
 		if (current_priority >= 0 &&
@@ -153,6 +208,10 @@ static int find_main_operator(int p, int q) {
 			best_priority = current_priority;
 			op = i;
 		}
+	}
+
+	if (depth != 0) {
+		panic("unmatched parentheses");
 	}
 
 	return op;
@@ -173,6 +232,10 @@ static uint32_t eval(int p, int q) {
 		}
 
 		return strtoul(tokens[p].str, NULL, 10);
+	}
+
+	if (check_parentheses(p, q)) {
+		return eval(p + 1, q - 1);
 	}
 
 	op = find_main_operator(p, q);
