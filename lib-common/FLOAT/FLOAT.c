@@ -1,4 +1,5 @@
 #include "FLOAT.h"
+#include <stdint.h>
 
 FLOAT F_mul_F(FLOAT a, FLOAT b) {
 	nemu_assert(0);
@@ -39,8 +40,34 @@ FLOAT f2F(float a) {
 	 * performing arithmetic operations on it directly?
 	 */
 
-	nemu_assert(0);
-	return 0;
+	uint32_t raw = *(uint32_t *)(void *)&a;
+
+	uint32_t sign = raw >> 31;
+	int exponent = (raw >> 23) & 0xff;
+	uint32_t fraction = raw & 0x7fffff;
+
+	/* Zero and subnormal values are smaller than the precision of Q16.16. */
+	if (exponent == 0) {
+		return 0;
+	}
+
+	/* Restore the implicit leading 1 of a normalized IEEE 754 number. */
+	uint32_t mantissa = fraction | 0x800000;
+	int shift = exponent - 134;
+
+	uint32_t magnitude;
+
+	if (shift >= 0) {
+		magnitude = mantissa << shift;
+	}
+	else if (-shift >= 32) {
+		magnitude = 0;
+	}
+	else {
+		magnitude = mantissa >> (-shift);
+	}
+
+	return sign ? -(FLOAT)magnitude : (FLOAT)magnitude;
 }
 
 FLOAT Fabs(FLOAT a) {
