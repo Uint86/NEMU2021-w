@@ -11,6 +11,9 @@ enum {
 	NOTYPE = 256, EQ,
 
 	/* TODO: Add more token types */
+	NEQ,
+	AND,
+	OR,
 	TK_NUM,
 	TK_HEX,
 	TK_REG
@@ -24,17 +27,24 @@ static struct rule {
 	/* TODO: Add more rules.
 	 * Pay attention to the precedence level of different rules.
 	 */
+	{" +",                         NOTYPE},
+
+	{"==",                         EQ},
+	{"!=",                         NEQ},
+	{"&&",                         AND},
+	{"\\|\\|",                     OR},
+
 	{"0[xX][0-9a-fA-F]+",          TK_HEX},
-	{"[0-9]+",TK_NUM},//number
+	{"[0-9]+",                     TK_NUM},
 	{"\\$[a-zA-Z][a-zA-Z0-9]*",    TK_REG},
-	{" +",	NOTYPE},				// spaces
-	{"\\+", '+'},					// plus
-	{"-",       '-'},     // -
-	{"\\*",     '*'},     // *
-	{"/",       '/'},     // /
-	{"\\(",     '('},     // (
-	{"\\)",     ')'},     // )
-	{"==", EQ}						// equal
+
+	{"\\+", '+'},
+	{"-",   '-'},
+	{"\\*", '*'},
+	{"/",   '/'},
+	{"\\(", '('},
+	{"\\)", ')'},
+	{"!",   '!'}
 };
 
 #define NR_REGEX (sizeof(rules) / sizeof(rules[0]) )
@@ -157,13 +167,23 @@ static uint32_t get_register_value(char *name) {//根据名字读取寄存器
 
 static int get_priority(int type) {//定义优先级
 	switch (type) {
+		case OR:
+			return 1;
+
+		case AND:
+			return 2;
+
+		case EQ:
+		case NEQ:
+			return 3;
+
 		case '+':
 		case '-':
-			return 1;
+			return 4;
 
 		case '*':
 		case '/':
-			return 2;
+			return 5;
 
 		default:
 			return -1;
@@ -284,34 +304,73 @@ static uint32_t eval(int p, int q) {
 
 	op = find_main_operator(p, q);
 
-	if (op == -1) {
-		panic("main operator not found");
-	}
+	if (op != -1) {
+		val1 = eval(p, op - 1);
 
-	val1 = eval(p, op - 1);
-	val2 = eval(op + 1, q);
-
-	switch (tokens[op].type) {
-		case '+':
-			return val1 + val2;
-
-		case '-':
-			return val1 - val2;
-
-		case '*':
-			return val1 * val2;
-
-		case '/':
-			if (val2 == 0) {
-				panic("division by zero");
+		/*
+		* 逻辑与的短路规则：
+		* 左边为 0，整个表达式一定为 0，
+		* 不需要计算右边。
+		*/
+		if (tokens[op].type == AND) {
+			if (val1 == 0) {
+				return 0;
 			}
-			return val1 / val2;
 
-		default:
-			panic("unknown operator");
+			val2 = eval(op + 1, q);
+			return val2 != 0;
+		}
+
+		/*
+		* 逻辑或的短路规则：
+		* 左边非 0，整个表达式一定为 1，
+		* 不需要计算右边。
+		*/
+		if (tokens[op].type == OR) {
+			if (val1 != 0) {
+				return 1;
+			}
+
+			val2 = eval(op + 1, q);
+			return val2 != 0;
+		}
+
+		val2 = eval(op + 1, q);
+
+		switch (tokens[op].type) {
+			case '+':
+				return val1 + val2;
+
+			case '-':
+				return val1 - val2;
+
+			case '*':
+				return val1 * val2;
+
+			case '/':
+				if (val2 == 0) {
+					panic("division by zero");
+				}
+				return val1 / val2;
+
+			case EQ:
+				return val1 == val2;
+
+			case NEQ:
+				return val1 != val2;
+
+			default:
+				panic("unknown binary operator");
+		}
+
+		return 0;
+	}
+	
+	if (tokens[p].type == '!') {
+		return !eval(p + 1, q);
 	}
 
-	return 0;
+	panic("invalid expression");
 	return 0;
 }
 
