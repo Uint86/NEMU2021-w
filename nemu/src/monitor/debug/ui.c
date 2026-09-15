@@ -224,6 +224,40 @@ static int cmd_w(char *args) {
 	return 0;
 }
 
+static int cmd_d(char *args) {
+	char *endptr;
+	int no;
+	WP *wp;
+
+	if (args == NULL) {
+		printf("Usage: d N\n");
+		return 0;
+	}
+
+	no = strtol(args, &endptr, 10);
+
+	if (*endptr != '\0' || no < 0) {
+		printf("Invalid watchpoint number '%s'\n", args);
+		return 0;
+	}
+
+	wp = get_wp_head();
+
+	while (wp != NULL && wp->NO != no) {
+		wp = wp->next;
+	}
+
+	if (wp == NULL) {
+		printf("Watchpoint %d does not exist\n", no);
+		return 0;
+	}
+
+	free_wp(wp);
+	printf("Watchpoint %d deleted\n", no);
+
+	return 0;
+}
+
 static struct {
 	char *name;
 	char *description;
@@ -239,6 +273,7 @@ static struct {
 	{"x","examine",cmd_x},
 	{"p", "Evaluate expression", cmd_p},
 	{"w", "Set a watchpoint", cmd_w},
+	{"d", "Delete a watchpoint", cmd_d},
 
 };
 
