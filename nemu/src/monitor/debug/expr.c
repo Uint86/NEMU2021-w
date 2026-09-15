@@ -121,7 +121,48 @@ static bool make_token(char *e) {
 	return true; 
 }
 
+static int get_priority(int type) {//定义优先级
+	switch (type) {
+		case '+':
+		case '-':
+			return 1;
+
+		case '*':
+		case '/':
+			return 2;
+
+		default:
+			return -1;
+	}
+}
+
+static int find_main_operator(int p, int q) {
+	int i;
+	int op;
+	int best_priority;
+	int current_priority;
+
+	op = -1;
+	best_priority = 100;
+
+	for (i = p; i <= q; i++) {
+		current_priority = get_priority(tokens[i].type);
+
+		if (current_priority >= 0 &&
+		    current_priority <= best_priority) {
+			best_priority = current_priority;
+			op = i;
+		}
+	}
+
+	return op;
+}
+
 static uint32_t eval(int p, int q) {
+	int op;
+	uint32_t val1;
+	uint32_t val2;
+
 	if (p > q) {
 		panic("bad expression");
 	}
@@ -134,7 +175,36 @@ static uint32_t eval(int p, int q) {
 		return strtoul(tokens[p].str, NULL, 10);
 	}
 
-	panic("complex expression is not implemented yet");
+	op = find_main_operator(p, q);
+
+	if (op == -1) {
+		panic("main operator not found");
+	}
+
+	val1 = eval(p, op - 1);
+	val2 = eval(op + 1, q);
+
+	switch (tokens[op].type) {
+		case '+':
+			return val1 + val2;
+
+		case '-':
+			return val1 - val2;
+
+		case '*':
+			return val1 * val2;
+
+		case '/':
+			if (val2 == 0) {
+				panic("division by zero");
+			}
+			return val1 / val2;
+
+		default:
+			panic("unknown operator");
+	}
+
+	return 0;
 	return 0;
 }
 
