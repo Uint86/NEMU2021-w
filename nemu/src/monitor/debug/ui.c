@@ -72,33 +72,72 @@ static int cmd_info(char *args){
 
 static int cmd_x(char *args) {
 	char *n_str;
-	char *addr_str;
+	char *expr_str;
+	char *separator;
+	char *endptr;
 	int n;
+	int i;
+	bool success;
 	swaddr_t addr;
+	swaddr_t current_addr;
+	uint32_t data;
 
 	if (args == NULL) {
-		printf("Usage: x N ADDR\n");
+		printf("Usage: x N EXPR\n");
 		return 0;
 	}
 
-	n_str = strtok(args, " ");
-	addr_str = strtok(NULL, " ");
+	/* 跳过参数开头可能存在的空格。 */
+	while (*args == ' ') {
+		args++;
+	}
 
-	if (n_str == NULL || addr_str == NULL) {
-		printf("Usage: x N ADDR\n");
+	n_str = args;
+	separator = strchr(args, ' ');
+
+	if (separator == NULL) {
+		printf("Usage: x N EXPR\n");
 		return 0;
 	}
 
-	n = atoi(n_str);
-	addr = strtoul(addr_str, NULL, 0);
+	/*
+	 * 把 "4 $esp + 4" 分成：
+	 * n_str    = "4"
+	 * expr_str = "$esp + 4"
+	 */
+	*separator = '\0';
+	expr_str = separator + 1;
 
-	int i;
+	/* 跳过 N 和表达式之间多余的空格。 */
+	while (*expr_str == ' ') {
+		expr_str++;
+	}
+
+	if (*expr_str == '\0') {
+		printf("Usage: x N EXPR\n");
+		return 0;
+	}
+
+	n = strtol(n_str, &endptr, 10);
+
+	if (*endptr != '\0' || n <= 0) {
+		printf("Invalid count '%s'\n", n_str);
+		return 0;
+	}
+
+	addr = expr(expr_str, &success);
+
+	if (!success) {
+		printf("Invalid expression '%s'\n", expr_str);
+		return 0;
+	}
 
 	for (i = 0; i < n; i++) {
-		swaddr_t current_addr = addr + i * 4;
-		uint32_t data = swaddr_read(current_addr, 4);
+		current_addr = addr + i * 4;
+		data = swaddr_read(current_addr, 4);
 
-		printf("0x%08x: 0x%08x\n", current_addr, data);
+		printf("0x%08x: 0x%08x\n",
+				current_addr, data);
 	}
 
 	return 0;
