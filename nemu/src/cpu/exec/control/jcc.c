@@ -47,3 +47,15 @@ make_helper(jne_si_b) {
 
 	return len + 1;
 }
+
+make_helper(jge_si_b) {
+	int len = decode_si_b(eip + 1);
+
+	if (cpu.eflags.SF == cpu.eflags.OF) {
+		cpu.eip += op_src->simm;
+	}
+
+	print_asm("jge %x", eip + len + 1 + op_src->simm);
+
+	return len + 1;
+}
