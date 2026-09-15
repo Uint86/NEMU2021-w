@@ -21,4 +21,7 @@ make_helper(cmp_i2rm_b);
 make_helper(cmp_r2rm_b);
 make_helper(cmp_rm2r_b);
 
+make_helper(cmp_i2a_b);
+make_helper(cmp_i2a_v);
+
 #endif
