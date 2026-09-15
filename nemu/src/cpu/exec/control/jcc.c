@@ -108,3 +108,15 @@ make_helper(js_si_b) {
 
 	return len + 1;
 }
+
+make_helper(jns_si_b) {
+	int len = decode_si_b(eip + 1);
+
+	if (!cpu.eflags.SF) {
+		cpu.eip += op_src->simm;
+	}
+
+	print_asm("jns %x", eip + len + 1 + op_src->simm);
+
+	return len + 1;
+}

@@ -10,5 +10,6 @@ make_helper(jl_si_b);
 make_helper(jg_si_b);
 make_helper(jbe_si_l);
 make_helper(js_si_b);
+make_helper(jns_si_b);
 
 #endif

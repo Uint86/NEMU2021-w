@@ -24,8 +24,21 @@ FLOAT F_div_F(FLOAT a, FLOAT b) {
 	 * out another way to perform the division.
 	 */
 
-	nemu_assert(0);
-	return 0;
+	FLOAT quotient;
+	int remainder;
+
+	uint32_t low = (uint32_t)a << 16;
+	int32_t high = a >> 16;
+
+	asm volatile (
+		"idivl %2"
+		: "=a"(quotient), "=d"(remainder)
+		: "r"(b), "a"(low), "d"(high)
+		: "cc"
+	);
+
+	(void)remainder;
+	return quotient;
 }
 
 FLOAT f2F(float a) {
