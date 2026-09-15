@@ -71,3 +71,16 @@ make_helper(jl_si_b) {
 
 	return len + 1;
 }
+
+make_helper(jg_si_b) {
+	int len = decode_si_b(eip + 1);
+
+	if (!cpu.eflags.ZF &&
+			cpu.eflags.SF == cpu.eflags.OF) {
+		cpu.eip += op_src->simm;
+	}
+
+	print_asm("jg %x", eip + len + 1 + op_src->simm);
+
+	return len + 1;
+}
