@@ -5,6 +5,7 @@
  */
 #include <sys/types.h>
 #include <regex.h>
+#include <stdlib.h>
 
 enum {
 	NOTYPE = 256, EQ,
@@ -16,7 +17,7 @@ enum {
 static struct rule {
 	char *regex;//regular expression 正则表达式
 	int token_type;
-} rules[] = {
+} rules[] = {//长的规则放前面
 
 	/* TODO: Add more rules.
 	 * Pay attention to the precedence level of different rules.
@@ -24,6 +25,11 @@ static struct rule {
 	{"[0-9]+",TK_NUM},//number
 	{" +",	NOTYPE},				// spaces
 	{"\\+", '+'},					// plus
+	{"-",       '-'},     // -
+	{"\\*",     '*'},     // *
+	{"/",       '/'},     // /
+	{"\\(",     '('},     // (
+	{"\\)",     ')'},     // )
 	{"==", EQ}						// equal
 };
 
@@ -115,6 +121,23 @@ static bool make_token(char *e) {
 	return true; 
 }
 
+static uint32_t eval(int p, int q) {
+	if (p > q) {
+		panic("bad expression");
+	}
+
+	if (p == q) {
+		if (tokens[p].type != TK_NUM) {
+			panic("single token is not a number");
+		}
+
+		return strtoul(tokens[p].str, NULL, 10);
+	}
+
+	panic("complex expression is not implemented yet");
+	return 0;
+}
+
 uint32_t expr(char *e, bool *success) {
 	if(!make_token(e)) {
 		*success = false;
@@ -122,7 +145,12 @@ uint32_t expr(char *e, bool *success) {
 	}
 
 	/* TODO: Insert codes to evaluate the expression. */
-	panic("please implement me");
-	return 0;
+	if (nr_token == 0) {
+		*success = false;
+		return 0;
+	}
+
+	*success = true;
+	return eval(0, nr_token - 1);
 }
 

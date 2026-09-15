@@ -104,6 +104,24 @@ static int cmd_x(char *args) {
 	return 0;
 }
 
+static int cmd_p(char *args) {
+	bool success;
+	uint32_t value;
+
+	if (args == NULL) {
+		printf("Usage: p EXPR\n");
+		return 0;
+	}
+
+	value = expr(args, &success);
+
+	if (success) {
+		printf("%u (0x%08x)\n", value, value);
+	}
+
+	return 0;
+}
+
 static struct {
 	char *name;
 	char *description;
@@ -117,6 +135,7 @@ static struct {
 	{"si","single step",cmd_si},
 	{"info","print",cmd_info},
 	{"x","examine",cmd_x},
+	{"p", "Evaluate expression", cmd_p},
 
 };
 
