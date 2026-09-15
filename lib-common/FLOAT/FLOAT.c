@@ -2,8 +2,7 @@
 #include <stdint.h>
 
 FLOAT F_mul_F(FLOAT a, FLOAT b) {
-	nemu_assert(0);
-	return 0;
+	return (FLOAT)(((int64_t)a * b) >> 16);
 }
 
 FLOAT F_div_F(FLOAT a, FLOAT b) {
