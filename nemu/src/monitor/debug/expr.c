@@ -11,7 +11,9 @@ enum {
 	NOTYPE = 256, EQ,
 
 	/* TODO: Add more token types */
-	TK_NUM
+	TK_NUM,
+	TK_HEX,
+	TK_REG
 };
 
 static struct rule {
@@ -22,7 +24,9 @@ static struct rule {
 	/* TODO: Add more rules.
 	 * Pay attention to the precedence level of different rules.
 	 */
+	{"0[xX][0-9a-fA-F]+",          TK_HEX},
 	{"[0-9]+",TK_NUM},//number
+	{"\\$[a-zA-Z][a-zA-Z0-9]*",    TK_REG},
 	{" +",	NOTYPE},				// spaces
 	{"\\+", '+'},					// plus
 	{"-",       '-'},     // -
@@ -89,6 +93,8 @@ static bool make_token(char *e) {
 						break;
 
 					case TK_NUM:
+					case TK_HEX:
+					case TK_REG:
 						Assert(nr_token < 32, "too many tokens");
 						Assert(substr_len < 32, "number is too long");
 
@@ -119,6 +125,34 @@ static bool make_token(char *e) {
 	}
 
 	return true; 
+}
+
+static uint32_t get_register_value(char *name) {//根据名字读取寄存器
+	int i;
+	char *reg_name;
+
+	/*
+	 * name 是 "$eax"。
+	 * name + 1 跳过开头的 '$'，得到 "eax"。
+	 */
+	reg_name = name + 1;
+
+	for (i = R_EAX; i <= R_EDI; i++) {
+		if (strcmp(reg_name, regsl[i]) == 0) {
+			return reg_l(i);
+		}
+	}
+
+	if (strcmp(reg_name, "eip") == 0) {
+		return cpu.eip;
+	}
+
+	if (strcmp(reg_name, "eflags") == 0) {
+		return cpu.eflags.val;
+	}
+
+	panic("unknown register: %s", name);
+	return 0;
 }
 
 static int get_priority(int type) {//定义优先级
@@ -227,11 +261,21 @@ static uint32_t eval(int p, int q) {
 	}
 
 	if (p == q) {
-		if (tokens[p].type != TK_NUM) {
-			panic("single token is not a number");
+		switch (tokens[p].type) {
+			case TK_NUM:
+				return strtoul(tokens[p].str, NULL, 10);
+
+			case TK_HEX:
+				return strtoul(tokens[p].str, NULL, 0);
+
+			case TK_REG:
+				return get_register_value(tokens[p].str);
+
+			default:
+				panic("single token has no value");
 		}
 
-		return strtoul(tokens[p].str, NULL, 10);
+		return 0;
 	}
 
 	if (check_parentheses(p, q)) {
