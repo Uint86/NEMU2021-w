@@ -51,9 +51,10 @@ static int cmd_si(char *args) {
 }
 
 static int cmd_info(char *args){
-	if (strcmp(args, "r") == 0) {
-        int i;
+	int i;
+	WP *wp;
 
+	if (strcmp(args, "r") == 0) {
 		if (args == NULL) {
 			printf("Usage: info r\n");
 			return 0;
@@ -66,6 +67,26 @@ static int cmd_info(char *args){
         printf("%-6s 0x%08x\n", "eip", cpu.eip);
         printf("%-6s 0x%08x\n", "eflags", cpu.eflags.val);
     }
+
+	else if (strcmp(args, "w") == 0) {
+		wp = get_wp_head();
+
+		if (wp == NULL) {
+			printf("No watchpoints\n");
+			return 0;
+		}
+
+		printf("%-4s %-20s %s\n", "NO", "Expression", "Value");
+
+		while (wp != NULL) {
+			printf("%-4d %-20s 0x%08x\n",
+					wp->NO,
+					wp->expression,
+					wp->old_value);
+
+			wp = wp->next;
+		}
+	}
 
 	return 0;
 }
@@ -161,6 +182,48 @@ static int cmd_p(char *args) {
 	return 0;
 }
 
+static int cmd_w(char *args) {
+	bool success;
+	uint32_t value;
+	WP *wp;
+
+	if (args == NULL) {
+		printf("Usage: w EXPR\n");
+		return 0;
+	}
+
+	/*
+	 * 创建监视点之前先检查表达式。
+	 * 表达式错误时，不应该消耗监视点节点。
+	 */
+	value = expr(args, &success);
+
+	if (!success) {
+		printf("Invalid expression '%s'\n", args);
+		return 0;
+	}
+
+	wp = new_wp();
+
+	if (wp == NULL) {
+		return 0;
+	}
+
+	if (strlen(args) >= sizeof(wp->expression)) {
+		printf("Expression is too long\n");
+		free_wp(wp);
+		return 0;
+	}
+
+	strcpy(wp->expression, args);
+	wp->old_value = value;
+
+	printf("Watchpoint %d: %s\n", wp->NO, wp->expression);
+	printf("Initial value: 0x%08x\n", wp->old_value);
+
+	return 0;
+}
+
 static struct {
 	char *name;
 	char *description;
@@ -175,6 +238,7 @@ static struct {
 	{"info","print",cmd_info},
 	{"x","examine",cmd_x},
 	{"p", "Evaluate expression", cmd_p},
+	{"w", "Set a watchpoint", cmd_w},
 
 };
 
