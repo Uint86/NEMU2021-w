@@ -30,11 +30,81 @@ __attribute__((used)) static int format_FLOAT(FILE *stream, FLOAT f) {
 		integer,
 		fraction
 	);
-	
+
 	return __stdio_fwrite(buf, len, stream);
 }
 
 static void modify_vfprintf() {
+		unsigned char *p = (unsigned char *)&_vfprintf_internal;
+	int i;
+	int call_pos = -1;
+
+	/*
+	 * 查找机器码：
+	 *
+	 *     e8 xx xx xx xx    call _fpmaxtostr
+	 *
+	 * rel32 的目标地址计算方式为：
+	 *
+	 *     下一条指令地址 + rel32
+	 */
+	for (i = 0; i < 4096; i++) {
+		if (p[i] == 0xe8) {
+			int32_t displacement = *(int32_t *)(p + i + 1);
+			unsigned char *target =
+				p + i + 5 + displacement;
+
+			if (target == (unsigned char *)&_fpmaxtostr) {
+				call_pos = i;
+
+				*(int32_t *)(p + i + 1) =
+					(int32_t)(
+						(unsigned char *)&format_FLOAT -
+						(p + i + 5)
+					);
+				break;
+			}
+		}
+	}
+
+	nemu_assert(call_pos >= 0);
+
+	/*
+	 * 只检查 call 前面的 64 字节，避免修改其它分支中
+	 * 恰好相同的机器码。
+	 */
+	int begin = call_pos > 64 ? call_pos - 64 : 0;
+	int load_count = 0;
+	int store_count = 0;
+
+	for (i = begin; i < call_pos; i++) {
+		if (p[i] == 0xdb && p[i + 1] == 0x2a) {
+			/* fldt (%edx) -> movl (%edx), %ecx */
+			p[i] = 0x8b;
+			p[i + 1] = 0x0a;
+			load_count++;
+		}
+		else if (p[i] == 0xdd && p[i + 1] == 0x02) {
+			/* fldl (%edx) -> movl (%edx), %ecx */
+			p[i] = 0x8b;
+			p[i + 1] = 0x0a;
+			load_count++;
+		}
+		else if (
+			p[i] == 0xdb &&
+			p[i + 1] == 0x3c &&
+			p[i + 2] == 0x24
+		) {
+			/* fstpt (%esp) -> movl %ecx, (%esp) */
+			p[i] = 0x89;
+			p[i + 1] = 0x0c;
+			p[i + 2] = 0x24;
+			store_count++;
+		}
+	}
+
+	nemu_assert(load_count == 2);
+	nemu_assert(store_count == 1);
 	/* TODO: Implement this function to hijack the formating of "%f"
 	 * argument during the execution of `_vfprintf_internal'. Below
 	 * is the code section in _vfprintf_internal() relative to the
@@ -81,6 +151,66 @@ static void modify_vfprintf() {
 }
 
 static void modify_ppfs_setargs() {
+		extern char _ppfs_setargs;
+
+	unsigned char *p = (unsigned char *)&_ppfs_setargs;
+	int i;
+	int fldl_pos = -1;
+	int long_long_pos = -1;
+
+	/* 查找 PA_DOUBLE 分支中的 fldl (%edx)。 */
+	for (i = 0; i < 512; i++) {
+		if (p[i] == 0xdd && p[i + 1] == 0x02) {
+			fldl_pos = i;
+			break;
+		}
+	}
+
+	/*
+	 * 查找 64 位整数读取代码：
+	 *
+	 *     movl  (%edx), %edi
+	 *     movl 4(%edx), %ebp
+	 *
+	 * 机器码：
+	 *
+	 *     8b 3a 8b 6a 04
+	 */
+	for (i = 0; i < 512; i++) {
+		if (
+			p[i] == 0x8b &&
+			p[i + 1] == 0x3a &&
+			p[i + 2] == 0x8b &&
+			p[i + 3] == 0x6a &&
+			p[i + 4] == 0x04
+		) {
+			long_long_pos = i;
+			break;
+		}
+	}
+
+	nemu_assert(fldl_pos >= 0);
+	nemu_assert(long_long_pos >= 0);
+
+	int displacement =
+		long_long_pos - (fldl_pos + 2);
+
+	nemu_assert(displacement >= -128);
+	nemu_assert(displacement <= 127);
+
+	/*
+	 * eb xx 是两字节短跳转：
+	 *
+	 *     jmp 64位整数读取分支
+	 */
+	p[fldl_pos] = 0xeb;
+	p[fldl_pos + 1] = (unsigned char)displacement;
+
+	/* 原浮点读取分支剩下的字节改为 NOP。 */
+	for (i = fldl_pos + 2; i <= fldl_pos + 8; i++) {
+		p[i] = 0x90;
+	}
+	
 	/* TODO: Implement this function to modify the action of preparing
 	 * "%f" arguments for _vfprintf_internal() in _ppfs_setargs().
 	 * Below is the code section in _vfprintf_internal() relative to
