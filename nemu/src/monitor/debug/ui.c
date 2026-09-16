@@ -1,6 +1,7 @@
 #include "monitor/monitor.h"
 #include "monitor/expr.h"
 #include "monitor/watchpoint.h"
+#include "monitor/elf.h"
 #include "nemu.h"
 
 #include <stdlib.h>
@@ -269,6 +270,52 @@ static int cmd_d(char *args) {
 	return 0;
 }
 
+static int cmd_bt(char *args) {
+	uint32_t frame_eip;
+	swaddr_t frame_ebp;
+	int frame_no;
+	int i;
+
+	if (args != NULL) {
+		printf("Usage: bt\n");
+		return 0;
+	}
+
+	frame_eip = cpu.eip;
+	frame_ebp = cpu.ebp;
+	frame_no = 0;
+
+	if (frame_ebp == 0) {
+		printf("No stack frame\n");
+		return 0;
+	}
+
+	while (frame_ebp != 0) {
+		const char *function_name;
+
+		function_name = find_function_name(frame_eip);
+
+		printf("#%d  0x%08x in %s(",
+				frame_no,
+				frame_eip,
+				function_name == NULL ? "??" : function_name);
+
+		for (i = 0; i < 4; i++) {
+			uint32_t arg;
+
+			arg = swaddr_read(frame_ebp + 8 + i * 4, 4);
+			printf("%s0x%08x", i == 0 ? "" : ", ", arg);
+		}
+
+		printf(")\n");
+
+		frame_eip = swaddr_read(frame_ebp + 4, 4);
+		frame_ebp = swaddr_read(frame_ebp, 4);
+		frame_no++;
+	}
+
+	return 0;
+}
 static struct {
 	char *name;
 	char *description;
@@ -285,6 +332,7 @@ static struct {
 	{"p", "Evaluate expression", cmd_p},
 	{"w", "Set a watchpoint", cmd_w},
 	{"d", "Delete a watchpoint", cmd_d},
+	{"bt", "Print the stack frame chain", cmd_bt},
 
 };
 

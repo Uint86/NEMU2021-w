@@ -102,3 +102,29 @@ bool find_object_symbol(const char *name, uint32_t *addr) {
 
 	return false;
 }
+
+const char *find_function_name(uint32_t addr) {
+	int i;
+
+	for (i = 0; i < nr_symtab_entry; i++) {
+		uint32_t start;
+		uint32_t end;
+
+		if (symtab[i].st_shndx == SHN_UNDEF) {
+			continue;
+		}
+
+		if (ELF32_ST_TYPE(symtab[i].st_info) != STT_FUNC) {
+			continue;
+		}
+
+		start = symtab[i].st_value;
+		end = start + symtab[i].st_size;
+
+		if (addr >= start && addr < end) {
+			return strtab + symtab[i].st_name;
+		}
+	}
+
+	return NULL;
+}

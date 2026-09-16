@@ -11,4 +11,11 @@ void load_elf_tables(int argc, char *argv[]);
  */
 bool find_object_symbol(const char *name, uint32_t *addr);
 
+/*
+ * 根据指令地址查找它所属的函数。
+ * 找不到时返回 NULL。
+ */
+const char *find_function_name(uint32_t addr);
+
+
 #endif
