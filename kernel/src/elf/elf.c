@@ -18,9 +18,10 @@ uint32_t get_ucr3();
 
 uint32_t loader() {
 	Elf32_Ehdr *elf;
-	Elf32_Phdr *ph = NULL;
+	Elf32_Phdr *ph;
 
 	uint8_t buf[4096];
+	int i;
 
 #ifdef HAS_DEVICE
 	ide_read(buf, ELF_OFFSET_IN_DISK, 4096);
@@ -31,13 +32,20 @@ uint32_t loader() {
 	elf = (void*)buf;
 
 	/* TODO: fix the magic number with the correct one */
-	const uint32_t elf_magic = 0xBadC0de;
+	const uint32_t elf_magic = 0x464c457f;
 	uint32_t *p_magic = (void *)buf;
 	nemu_assert(*p_magic == elf_magic);
 
+	nemu_assert(elf->e_phentsize == sizeof(Elf32_Phdr));
+	nemu_assert(elf->e_phoff +
+			elf->e_phnum * elf->e_phentsize <= sizeof(buf));
+
 	/* Load each program segment */
-	panic("please implement me");
-	for(; true; ) {
+	for (i = 0; i < elf->e_phnum; i++) {
+		uint32_t pa;
+
+		ph = (void *)(buf + elf->e_phoff +
+				i * elf->e_phentsize);
 		/* Scan the program header table, load each segment into memory */
 		if(ph->p_type == PT_LOAD) {
 
@@ -49,7 +57,24 @@ uint32_t loader() {
 			/* TODO: zero the memory region 
 			 * [VirtAddr + FileSiz, VirtAddr + MemSiz)
 			 */
+			nemu_assert(ph->p_filesz <= ph->p_memsz);
 
+#ifdef IA32_PAGE
+			pa = mm_malloc(ph->p_vaddr, ph->p_memsz);
+#else
+			pa = ph->p_vaddr;
+#endif
+#ifdef HAS_DEVICE
+			ide_read((uint8_t *)pa,
+					ELF_OFFSET_IN_DISK + ph->p_offset,
+					ph->p_filesz);
+#else
+			ramdisk_read((uint8_t *)pa,
+					ELF_OFFSET_IN_DISK + ph->p_offset,
+					ph->p_filesz);
+#endif
+			memset((void *)(pa + ph->p_filesz), 0,
+					ph->p_memsz - ph->p_filesz);
 
 #ifdef IA32_PAGE
 			/* Record the program break for future use. */
