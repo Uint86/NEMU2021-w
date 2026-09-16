@@ -16,7 +16,21 @@ __attribute__((used)) static int format_FLOAT(FILE *stream, FLOAT f) {
 	 */
 
 	char buf[80];
-	int len = sprintf(buf, "0x%08x", f);
+	
+	uint32_t magnitude =
+		f < 0 ? -(uint32_t)f : (uint32_t)f;
+	uint32_t integer = magnitude >> 16;
+	uint32_t fraction =
+		((magnitude & 0xffffu) * 15625u) >> 10;
+
+	int len = sprintf(
+		buf,
+		"%s%u.%06u",
+		f < 0 ? "-" : "",
+		integer,
+		fraction
+	);
+	
 	return __stdio_fwrite(buf, len, stream);
 }
 
