@@ -1,6 +1,7 @@
 #include "common.h"
 #include <stdlib.h>
 #include <elf.h>
+#include "monitor/elf.h"
 
 char *exec_file = NULL;
 
@@ -81,3 +82,23 @@ void load_elf_tables(int argc, char *argv[]) {
 	fclose(fp);
 }
 
+bool find_object_symbol(const char *name, uint32_t *addr) {
+	int i;
+
+	for (i = 0; i < nr_symtab_entry; i++) {
+		if (symtab[i].st_shndx == SHN_UNDEF) {
+			continue;
+		}
+
+		if (ELF32_ST_TYPE(symtab[i].st_info) != STT_OBJECT) {
+			continue;
+		}
+
+		if (strcmp(strtab + symtab[i].st_name, name) == 0) {
+			*addr = symtab[i].st_value;
+			return true;
+		}
+	}
+
+	return false;
+}

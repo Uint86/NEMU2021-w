@@ -1,4 +1,5 @@
 #include "nemu.h"
+#include "monitor/elf.h"
 
 /* We use the POSIX regex functions to process regular expressions.
  * Type 'man regex' for more information about POSIX regex functions.
@@ -17,6 +18,7 @@ enum {
 	TK_NUM,
 	TK_HEX,
 	TK_REG,
+	TK_SYMBOL,
 	TK_NEG, //一元负号
 	TK_DEREF//解引用
 };
@@ -39,6 +41,7 @@ static struct rule {
 	{"0[xX][0-9a-fA-F]+",          TK_HEX},
 	{"[0-9]+",                     TK_NUM},
 	{"\\$[a-zA-Z][a-zA-Z0-9]*",    TK_REG},
+	{"[a-zA-Z_][a-zA-Z0-9_]*",     TK_SYMBOL},
 
 	{"\\+", '+'},
 	{"-",   '-'},
@@ -107,6 +110,7 @@ static bool make_token(char *e) {
 					case TK_NUM:
 					case TK_HEX:
 					case TK_REG:
+					case TK_SYMBOL:
 						Assert(nr_token < 32, "too many tokens");
 						Assert(substr_len < 32, "number is too long");
 
@@ -144,6 +148,7 @@ static bool make_token(char *e) {
 				(tokens[i - 1].type != TK_NUM &&
 				tokens[i - 1].type != TK_HEX &&
 				tokens[i - 1].type != TK_REG &&
+				tokens[i - 1].type != TK_SYMBOL &&
 				tokens[i - 1].type != ')'))) {
 			tokens[i].type = TK_NEG;
 		}
@@ -154,6 +159,7 @@ static bool make_token(char *e) {
 				(tokens[i - 1].type != TK_NUM &&
 				tokens[i - 1].type != TK_HEX &&
 				tokens[i - 1].type != TK_REG &&
+				tokens[i - 1].type != TK_SYMBOL &&
 				tokens[i - 1].type != ')'))) {
 			tokens[i].type = TK_DEREF;
 		}
@@ -316,6 +322,16 @@ static uint32_t eval(int p, int q) {
 			case TK_REG:
 				return get_register_value(tokens[p].str);
 
+			case TK_SYMBOL: {
+				uint32_t addr;
+
+				if (!find_object_symbol(tokens[p].str, &addr)) {
+					panic("unknown symbol: %s", tokens[p].str);
+				}
+
+				return addr;
+			}
+			
 			default:
 				panic("single token has no value");
 		}

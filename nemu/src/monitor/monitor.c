@@ -1,4 +1,5 @@
 #include "nemu.h"
+#include "monitor/elf.h"
 
 #define ENTRY_START 0x100000
 
@@ -6,7 +7,6 @@ extern uint8_t entry [];
 extern uint32_t entry_len;
 extern char *exec_file;
 
-void load_elf_tables(int, char *[]);
 void init_regex();
 void init_wp_pool();
 void init_ddr3();
